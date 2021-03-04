@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, redirect, flash, session
 from flask_debugtoolbar import DebugToolbarExtension
-from surveys import satisfaction_survey as survey
+from surveys import surveys as survey
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = "never-tell!"
@@ -8,26 +8,45 @@ app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 debug = DebugToolbarExtension(app)
 
-responses = []
-
 @app.route("/")
+def select_survey():
+    session["responses"] = []
+
+    return render_template("select_survey.html", titles=survey.keys())
+
+@app.route("/start")
 def start():
-    return render_template("survey_start.html", title = survey.title, instructions = survey.instructions)
 
-@app.route("/begin", methods = ["POST"])
-def begin():
-    return redirect("/questions/0")
+    survey_id = request.args["survey_id"]
+    print(survey_id)
+    correct_survey = survey[survey_id]
 
-@app.route("/questions/<int:index>")
-def question(index):
-    print("hi")
+    return render_template("survey_start.html", title = correct_survey.title, instructions = correct_survey.instructions, survey_id=survey_id)
+
+@app.route("/<survey_id>/begin", methods = ["POST"])
+def begin(survey_id):
+    return redirect(f"/{survey_id}/questions/0")
+
+@app.route("/<survey_id>/questions/<int:index>")
+def question(survey_id, index):
     current_index = index
-    current_question = survey.questions[current_index]
-    return render_template("question.html", question = current_question)
+    if current_index != len(session["responses"]):
+        flash("You're trying to visit an invalid question")
+        return redirect(f"/{survey_id}/questions/{len(session['responses'])}")
+    current_question = survey[survey_id].questions[current_index]
+    return render_template("question.html", question = current_question, survey_id=survey_id)
 
-@app.route("/answer", methods = ["POST"])
-def answer():
+@app.route("/<survey_id>/answer", methods = ["POST"])
+def answer(survey_id):
+    responses = session["responses"]
     responses.append(request.form["answer"])
-    print(responses)
-    return redirect(f"questions/{len(responses)}")
+    session["responses"] = responses
+    
+    if len(session["responses"]) < len(survey[survey_id].questions):
+        return redirect(f"/{survey_id}/questions/{len(session['responses'])}")
+    return redirect("/completion")
+
+@app.route("/completion")
+def completion():
+    return render_template("completion.html")
 
