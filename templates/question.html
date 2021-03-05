@@ -15,8 +15,16 @@
         {% endfor %}
       </p>
 
+      {% if question.allow_text %}
+        <p>Enter comments here: <input
+        type="text"
+        name="comment">
+        </p>
+      {% endif %}
+    
     <button>Continue</button>
   </form>
+
   {% for msg in get_flashed_messages() %} 
   <p>
     {{get_flashed_messages()[0]}}

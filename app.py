@@ -11,14 +11,13 @@ debug = DebugToolbarExtension(app)
 @app.route("/")
 def select_survey():
     session["responses"] = []
-
+    session["comments"] = []
     return render_template("select_survey.html", titles=survey.keys())
 
 @app.route("/start")
 def start():
 
     survey_id = request.args["survey_id"]
-    print(survey_id)
     correct_survey = survey[survey_id]
 
     return render_template("survey_start.html", title = correct_survey.title, instructions = correct_survey.instructions, survey_id=survey_id)
@@ -42,11 +41,18 @@ def answer(survey_id):
     responses.append(request.form["answer"])
     session["responses"] = responses
     
+    comments = session["comments"]
+    comments.append(request.form.get("comment", ""))
+    session["comments"] = comments
+
     if len(session["responses"]) < len(survey[survey_id].questions):
         return redirect(f"/{survey_id}/questions/{len(session['responses'])}")
-    return redirect("/completion")
+    
+    return redirect(f"/{survey_id}/completion")
 
-@app.route("/completion")
-def completion():
-    return render_template("completion.html")
+@app.route("/<survey_id>/completion")
+def completion(survey_id):
+    
+    return render_template("completion.html", questions = survey[survey_id].questions, 
+    length = len(survey[survey_id].questions))
 
